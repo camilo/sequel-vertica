@@ -6,7 +6,7 @@ Gem::Specification.new do |gem|
   gem.email         = ["camilo@camilolopez.com"]
   gem.description   = %q{Sequel adapter for the Vertica database}
   gem.summary       = %q{Sequel adapter for the Vertica database largely based on the PostgreSQL adapter}
-  gem.homepage      = ""
+  gem.homepage      = "https://github.com/camilo/svmredlight"
 
   gem.add_development_dependency "rspec"
   gem.add_runtime_dependency "sequel", "~> 3.35.0"
