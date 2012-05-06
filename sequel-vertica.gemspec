@@ -9,8 +9,8 @@ Gem::Specification.new do |gem|
   gem.homepage      = ""
 
   gem.add_development_dependency "rspec"
-  gem.add_runtime_dependency "sequel"
-  gem.add_runtime_dependency "vertica"
+  gem.add_runtime_dependency "sequel", "~> 3.35.0"
+  gem.add_runtime_dependency "vertica", "~> 0.9.1"
 
   gem.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   gem.files         = `git ls-files`.split("\n")
