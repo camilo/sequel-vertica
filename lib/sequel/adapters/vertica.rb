@@ -20,10 +20,12 @@ module Sequel
       end
 
       def execute(sql, opts = {}, &block)
+        res = nil
         synchronize(opts[:server]) do |conn|
           res = conn.query(sql)
           res.each(&block)
         end
+        res
       rescue ::Vertica::Error => e
         raise_error(e)
       end
@@ -76,7 +78,7 @@ module Sequel
         selector = [:column_name, :constraint_name, :is_nullable.as(:allow_null), 
                     (:column_default).as(:default), (:data_type).as(:db_type)]
         filter = { :table_name => table_name }
-        filter [:table_schema] = schema.to_s if schema
+        filter[:table_schema] = schema.to_s if schema
 
         dataset = metadata_dataset.select(*selector).filter(filter).
           from(:v_catalog__columns).left_outer_join(:v_catalog__table_constraints, :table_id => :table_id)
@@ -97,9 +99,17 @@ module Sequel
       EXPLAIN_LOCAL = 'EXPLAIN LOCAL '
       QUERY_PLAN = 'QUERY PLAN' 
 
+      def columns
+        return @columns if @columns
+        ds = unfiltered.unordered.clone(:distinct => nil, :limit => 0, :offset=>nil)
+        res = @db.execute(ds.select_sql)
+        @columns = res.columns.map { |c| c.name }
+        @columns
+      end
+
+
       def fetch_rows(sql)
-        execute(sql) do  |row| 
-          @columns ||= row.keys 
+        execute(sql) do |row| 
           yield row 
         end
       end
