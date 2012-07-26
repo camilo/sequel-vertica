@@ -110,6 +110,7 @@ describe "A vertica dataset" do
 
   specify "#columns should return the correct column names" do
     @d.columns!.should == [:name, :value]
+    @d.select(:name).columns!.should == [:name]
   end
 end
 
