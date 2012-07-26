@@ -108,6 +108,9 @@ describe "A vertica dataset" do
     @d.filter(:name => /^bc/).count.should == 1
   end
 
+  specify "#columns should return the correct column names" do
+    @d.columns!.should == [:name, :value]
+  end
 end
 
 
@@ -274,7 +277,6 @@ describe "Vertica::Database schema qualified tables" do
     cs.should_not include(:d)
     VERTICA_DB.drop_table(:domains)
   end
-
 
   specify "#table_exists? should see if the table is in a given schema" do
     VERTICA_DB.create_table(:schema_test__schema_test){integer :i}
