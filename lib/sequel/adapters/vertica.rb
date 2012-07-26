@@ -24,6 +24,8 @@ module Sequel
           res = conn.query(sql)
           res.each(&block)
         end
+      rescue ::Vertica::Error => e
+        raise_error(e)
       end
 
       def execute_insert(sql, opts = {}, &block)
