@@ -1,4 +1,4 @@
 require 'sequel-vertica/version'
-require './lib/sequel/adapters/vertica'
+require 'sequel/adapters/vertica'
 
 Sequel::Database::ADAPTERS << 'vertica'
