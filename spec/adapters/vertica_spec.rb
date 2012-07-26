@@ -166,7 +166,7 @@ describe "A Vertica database" do
     @db[:test2].first[:xyz].should == '000'
 
     @db[:test2].columns.should == [:name, :value, :xyz]
-    proc{ @db.drop_column :test2, :xyz }.should raise_error(Vertica::Error::QueryError,
+    proc{ @db.drop_column :test2, :xyz }.should raise_error(Sequel::DatabaseError,
                                                     /ALTER TABLE DROP COLUMN not supported/)
 
     @db[:test2].columns.should ==[:name, :value, :xyz]
@@ -184,7 +184,7 @@ describe "A Vertica database" do
     @db[:test2].delete
     @db[:test2] << {:name => 'mmm', :value => 111, :xyz => 56.78}
 
-    proc{ @db.set_column_type :test2, :xyz, :integer }.should raise_error(Vertica::Error::QueryError,
+    proc{ @db.set_column_type :test2, :xyz, :integer }.should raise_error(Sequel::DatabaseError,
                                                     /ALTER TABLE ALTER COLUMN not supported/)
   end
 

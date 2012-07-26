@@ -1,9 +1,11 @@
 require 'rubygems'
 require 'logger'
-unless Object.const_defined?('Sequel')
+
+unless Object.const_defined?('Sequel') &&  Sequel.const_defined?('Model')
   $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), "../../lib/"))
   require 'sequel'
 end
+
 begin
   require File.join(File.dirname(File.dirname(File.expand_path(__FILE__))), 'spec_config.rb')
 rescue LoadError
@@ -13,6 +15,7 @@ if ENV['SEQUEL_COLUMNS_INTROSPECTION']
   Sequel.extension :columns_introspection
   Sequel::Dataset.introspect_all_columns
 end
+
 
 Sequel::Model.cache_anonymous_models = false
 
