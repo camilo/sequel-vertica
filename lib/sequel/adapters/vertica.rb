@@ -22,7 +22,7 @@ module Sequel
       def execute(sql, opts = {}, &block)
         res = nil
         synchronize(opts[:server]) do |conn|
-          res = conn.query(sql)
+          res = log_yield(sql) { conn.query(sql) }
           res.each(&block)
         end
         res
