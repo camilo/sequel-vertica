@@ -3,7 +3,9 @@ require 'vertica'
 module Sequel
   module Vertica
     class Database < Sequel::Database
+
       ::Vertica::Connection.send(:alias_method,:execute, :query)
+
       PK_NAME = 'C_PRIMARY'
       set_adapter_scheme :vertica
 
@@ -82,7 +84,7 @@ module Sequel
 
         dataset = metadata_dataset.select(*selector).filter(filter).
           from(:v_catalog__columns).left_outer_join(:v_catalog__table_constraints, :table_id => :table_id)
-        
+
         dataset.map do |row|
           row[:default] = nil if blank_object?(row[:default])
           row[:type] = schema_column_type(row[:db_type])
@@ -116,6 +118,10 @@ module Sequel
 
       def explain(opts={})
         execute((opts[:local] ? EXPLAIN_LOCAL : EXPLAIN) + select_sql).map{ |k, v| k == QUERY_PLAN }.join("\$")
+      end
+
+      def supports_regexp?
+        true
       end
     end
   end
