@@ -9,7 +9,7 @@ Gem::Specification.new do |gem|
   gem.homepage      = "https://github.com/camilo/sequel-vertica"
 
   gem.add_development_dependency "rspec"
-  gem.add_runtime_dependency "sequel", "~> 3.37.0"
+  gem.add_runtime_dependency "sequel", "~> 3.42.0"
   gem.add_runtime_dependency "vertica", "~> 0.9.2"
 
   gem.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
