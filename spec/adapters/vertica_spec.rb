@@ -45,6 +45,16 @@ describe "A Vertica database" do
     ]
   end
 
+  specify "should create an auto incrementing primary key" do
+    @db.create_table! :auto_inc_test do
+      primary_key :id
+      integer :value
+    end
+    @db[<<-SQL].first[:COUNT].should == 1
+      SELECT COUNT(1) FROM v_catalog.sequences WHERE identity_table_name='auto_inc_test'
+    SQL
+  end
+
 end
 
 describe "A vertica dataset" do
