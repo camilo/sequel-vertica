@@ -2,11 +2,26 @@ require 'vertica'
 
 module Sequel
   module Vertica
+
+    class CreateTableGenerator < Sequel::Schema::CreateTableGenerator
+      def primary_key(name, *args)
+        super
+
+        if @primary_key[:auto_increment]
+          @primary_key.delete(:auto_increment)
+          @primary_key[:type] = Vertica::Database::AUTO_INCREMENT
+        end
+
+        @primary_key
+      end
+    end
+
     class Database < Sequel::Database
 
       ::Vertica::Connection.send(:alias_method,:execute, :query)
 
       PK_NAME = 'C_PRIMARY'
+      AUTO_INCREMENT = 'AUTO_INCREMENT'
       set_adapter_scheme :vertica
 
       def connect(server)
@@ -61,6 +76,14 @@ module Sequel
 
       def locks
         dataset.from(:v_monitor__locks)
+      end
+
+      def auto_increment_sql
+        AUTO_INCREMENT
+      end
+
+      def create_table_generator_class
+        Vertica::CreateTableGenerator
       end
 
       def tables(options = {} )
