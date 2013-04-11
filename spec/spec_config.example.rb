@@ -1,1 +1,1 @@
-VERTICA_URL = 'vertica://dbadmin:@192.168.56.101:5433/warehouse'
+VERTICA_URL = 'vertica://dbadmin:@127.0.0.1:5433/warehouse'
