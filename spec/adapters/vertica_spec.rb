@@ -169,37 +169,35 @@ describe "A Vertica database" do
     @db = VERTICA_DB
   end
 
-  specify "should support column operations" do
-    @db.create_table!(:test2){varchar :name; integer :value}
-    @db[:test2] << {}
+  specify "should support ALTER TABLE DROP COLUMN" do
+    @db.create_table!(:test3) { varchar :name; integer :value }
+    @db[:test3].columns.should == [:name, :value]
+    @db.drop_column :test3, :value
+    @db[:test3].columns.should == [:name]
+  end
+
+  specify "It does not support ALTER TABLE ALTER COLUMN TYPE" do
+    @db.create_table!(:test4) { varchar :name; integer :value }
+    proc{ @db.set_column_type :test4, :value, :float }.should raise_error(Sequel::DatabaseError,
+                                                    /Syntax error at or near "TYPE"/)
+  end
+
+  specify "should support rename column operations" do
+    @db.create_table!(:test5) { varchar :name; integer :value }
+    @db[:test5] << {:name => 'mmm', :value => 111}
+    @db.rename_column :test5, :value, :val
+    @db[:test5].columns.should == [:name, :val]
+    @db[:test5].first[:val].should == 111
+  end
+
+  specify "should support add column operations" do
+    @db.create_table!(:test2) { varchar :name; integer :value }
     @db[:test2].columns.should == [:name, :value]
 
     @db.add_column :test2, :xyz, :varchar, :default => '000'
     @db[:test2].columns.should == [:name, :value, :xyz]
     @db[:test2] << {:name => 'mmm', :value => 111}
     @db[:test2].first[:xyz].should == '000'
-
-    @db[:test2].columns.should == [:name, :value, :xyz]
-    proc{ @db.drop_column :test2, :xyz }.should raise_error(Sequel::DatabaseError,
-                                                    /ALTER TABLE DROP COLUMN not supported/)
-
-    @db[:test2].columns.should ==[:name, :value, :xyz]
-
-    @db[:test2].delete
-    @db.add_column :test2, :xyz2, :varchar, :default => '000'
-    @db[:test2] << {:name => 'mmm', :value => 111, :xyz2 => 'qqqq'}
-
-    @db[:test2].columns.should == [:name, :value, :xyz, :xyz2]
-    @db.rename_column :test2, :xyz, :zyx
-    @db[:test2].columns.should == [:name, :value, :zyx, :xyz2]
-    @db[:test2].first[:xyz2].should == 'qqqq'
-
-    @db.add_column :test2, :xyz, :float
-    @db[:test2].delete
-    @db[:test2] << {:name => 'mmm', :value => 111, :xyz => 56.78}
-
-    proc{ @db.set_column_type :test2, :xyz, :integer }.should raise_error(Sequel::DatabaseError,
-                                                    /ALTER TABLE ALTER COLUMN not supported/)
   end
 
   specify "#locks should be a dataset returning database locks " do
