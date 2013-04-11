@@ -8,6 +8,8 @@ Gem::Specification.new do |gem|
   gem.summary       = %q{Sequel adapter for the Vertica database largely based on the PostgreSQL adapter}
   gem.homepage      = "https://github.com/camilo/sequel-vertica"
 
+  gem.requirements  = "Vertica version 6.0 or higher"
+
   gem.add_development_dependency "rspec"
   gem.add_runtime_dependency "sequel", "~> 3.42.0"
   gem.add_runtime_dependency "vertica", "~> 0.10.0"
