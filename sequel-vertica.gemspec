@@ -18,6 +18,6 @@ Gem::Specification.new do |gem|
   gem.files         = `git ls-files`.split("\n")
   gem.test_files    = `git ls-files -- {spec}/*`.split("\n")
   gem.name          = "sequel-vertica"
-  gem.require_paths = ["lib"] 
+  gem.require_paths = ["lib"]
   gem.version       = Sequel::Vertica::VERSION
 end
