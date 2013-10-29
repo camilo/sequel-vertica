@@ -11,7 +11,7 @@ Gem::Specification.new do |gem|
   gem.requirements  = "Vertica version 6.0 or higher"
 
   gem.add_development_dependency "rspec"
-  gem.add_runtime_dependency "sequel", "~> 3.42.0"
+  gem.add_runtime_dependency "sequel", "~> 3.45.0"
   gem.add_runtime_dependency "vertica", "~> 0.11.0"
 
   gem.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
