@@ -1,7 +1,7 @@
 require File.join(File.dirname(File.expand_path(__FILE__)), 'spec_helper.rb')
 
 unless defined?(VERTICA_DB)
-  VERTICA_URL = 'vertica://vertica:vertica@localhost:5432/reality_spec' unless defined? VERTICA_URL
+  VERTICA_URL = 'vertica://dbadmin:shopify@localhost:15433/warehouse' unless defined? VERTICA_URL
   VERTICA_DB = Sequel.connect(ENV['SEQUEL_VERTICA_SPEC_DB']||VERTICA_URL)
 end
 INTEGRATION_DB = VERTICA_DB unless defined?(INTEGRATION_DB)
@@ -53,6 +53,76 @@ describe "A Vertica database" do
     @db[<<-SQL].first[:COUNT].should == 1
       SELECT COUNT(1) FROM v_catalog.sequences WHERE identity_table_name='auto_inc_test'
     SQL
+  end
+
+  describe "#copy_into" do
+    before(:all) do
+      @db = VERTICA_DB
+      @db.create_table!(:test_copy){Integer :x; Integer :y}
+      @ds = @db[:test_copy].order(:x, :y)
+    end
+    before do
+      @db[:test_copy].delete
+    end
+
+    after(:all) do
+      @db.drop_table?(:test_copy)
+    end
+
+    specify "should work with a :data option containing data in PostgreSQL text format" do
+      @db.copy_into(:test_copy, :data=>"1\t2\n3\t4\n", :delimiter => "\t")
+      @ds.select_map([:x, :y]).should == [[1, 2], [3, 4]]
+    end
+
+    specify "should respect given :options" do
+      @db.copy_into(:test_copy, :options=>"RECORD TERMINATOR '\t'", :data=>"\t1,2\t3,4\t", :delimiter => ',')
+      @ds.select_map([:x, :y]).should == [[1, 2], [3, 4]]
+    end
+
+    specify "should accept :columns option to online copy the given columns" do
+      @db.copy_into(:test_copy, :data=>"1\t2\n3\t4\n", :columns=>[:y, :x], :delimiter => "\t")
+      @ds.select_map([:x, :y]).should == [[2, 1], [4, 3]]
+    end
+
+    specify "should accept a block and use returned values for the copy in data stream" do
+      buf = ["1\t2\n", "3\t4\n"]
+      @db.copy_into(:test_copy, :delimiter => "\t"){buf.shift}
+      @ds.select_map([:x, :y]).should == [[1, 2], [3, 4]]
+    end
+
+    specify "should accept an enumerable as the :data option" do
+      @db.copy_into(:test_copy, :data=>["1\t2\n", "3\t4\n"], :delimiter => "\t")
+      @ds.select_map([:x, :y]).should == [[1, 2], [3, 4]]
+    end
+
+    specify "should have an exception, cause a rollback of copied data and still have a usable connection" do
+      2.times do
+        sent = false
+        proc {
+          @db.copy_into(:test_copy, :delimiter => "\t") do
+            raise ArgumentError if sent
+            sent = true
+            "1\t2\n"
+          end
+        }.should raise_error(ArgumentError)
+        @ds.select_map([:x, :y]).should == []
+      end
+    end
+
+    specify "should handle database errors with a rollback of copied data and still have a usable connection" do
+      2.times do
+        proc{@db.copy_into(:test_copy, :data=>["1\t2\n", "3\ta\n"])}.should raise_error(Sequel::DatabaseError)
+        @ds.select_map([:x, :y]).should == []
+      end
+    end
+
+    specify "should raise an Error if both :data and a block are provided" do
+      proc{@db.copy_into(:test_copy, :data=>["1\t2\n", "3\t4\n"]){}}.should raise_error(Sequel::Error)
+    end
+
+    specify "should raise an Error if neither :data or a block are provided" do
+      proc{@db.copy_into(:test_copy)}.should raise_error(Sequel::Error)
+    end
   end
 
 end
