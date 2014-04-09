@@ -15,7 +15,7 @@ if ENV['SEQUEL_COLUMNS_INTROSPECTION']
 end
 
 
-Sequel::Model.cache_anonymous_models = false
+Sequel.cache_anonymous_models = false
 
 class Sequel::Database
   def log_duration(duration, message)
@@ -24,14 +24,14 @@ class Sequel::Database
 end
 
 (defined?(RSpec) ? RSpec::Core::ExampleGroup : Spec::Example::ExampleGroup).class_eval do
-  def log 
+  def log
     begin
       INTEGRATION_DB.loggers << Logger.new(STDOUT)
       yield
     ensure
       INTEGRATION_DB.loggers.pop
-    end 
-  end 
+    end
+  end
 
   def self.cspecify(message, *checked, &block)
     return specify(message, &block) if ENV['SEQUEL_NO_PENDING']

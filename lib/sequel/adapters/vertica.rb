@@ -1,6 +1,7 @@
 require 'vertica'
 
 module Sequel
+  extension :core_extensions
   module Vertica
 
     class CreateTableGenerator < Sequel::Schema::CreateTableGenerator
@@ -102,7 +103,7 @@ module Sequel
       def schema_parse_table(table_name, options = {})
         schema = options[:schema]
 
-        selector = [:column_name, :constraint_name, :is_nullable.as(:allow_null), 
+        selector = [:column_name, :constraint_name, :is_nullable.as(:allow_null),
                     (:column_default).as(:default), (:data_type).as(:db_type)]
         filter = { :columns__table_name => table_name }
         filter[:columns__table_schema] = schema.to_s if schema
@@ -126,7 +127,7 @@ module Sequel
       Database::DatasetClass = self
       EXPLAIN = 'EXPLAIN '
       EXPLAIN_LOCAL = 'EXPLAIN LOCAL '
-      QUERY_PLAN = 'QUERY PLAN' 
+      QUERY_PLAN = 'QUERY PLAN'
 
       def columns
         return @columns if @columns
@@ -137,8 +138,8 @@ module Sequel
       end
 
       def fetch_rows(sql)
-        execute(sql) do |row| 
-          yield row 
+        execute(sql) do |row|
+          yield row
         end
       end
 

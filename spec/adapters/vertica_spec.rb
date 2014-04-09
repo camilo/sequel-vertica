@@ -28,7 +28,7 @@ VERTICA_DB.create_table! :test4 do
   bytea :value
 end
 
-describe "A Vertica database" do 
+describe "A Vertica database" do
 
   before do
     @db = VERTICA_DB
@@ -67,7 +67,7 @@ describe "A vertica dataset" do
     @d.select(:name).sql.should == \
       'SELECT "name" FROM "test"'
 
-    @d.select('COUNT(*)'.lit).sql.should == \
+    @d.select(Sequel.lit('COUNT(*)')).sql.should == \
       'SELECT COUNT(*) FROM "test"'
 
     @d.select(:max.sql_function(:value)).sql.should == \
@@ -82,13 +82,13 @@ describe "A vertica dataset" do
     @d.order(:name.desc).sql.should == \
       'SELECT * FROM "test" ORDER BY "name" DESC'
 
-    @d.select('test.name AS item_name'.lit).sql.should == \
+    @d.select(Sequel.lit('test.name AS item_name')).sql.should == \
       'SELECT test.name AS item_name FROM "test"'
 
-    @d.select('"name"'.lit).sql.should == \
+    @d.select(Sequel.lit('"name"')).sql.should == \
       'SELECT "name" FROM "test"'
 
-    @d.select('max(test."name") AS "max_name"'.lit).sql.should == \
+    @d.select(Sequel.lit('max(test."name") AS "max_name"')).sql.should == \
       'SELECT max(test."name") AS "max_name" FROM "test"'
 
     @d.insert_sql(:x => :y).should =~ \
@@ -239,7 +239,6 @@ describe "Vertica::Database schema qualified tables" do
 
   after do
     VERTICA_DB << "DROP SCHEMA schema_test CASCADE"
-    VERTICA_DB.default_schema = nil
   end
 
   specify "should be able to create, drop, select and insert into tables in a given schema" do
@@ -247,11 +246,11 @@ describe "Vertica::Database schema qualified tables" do
     VERTICA_DB[:schema_test__table_in_schema_test].first.should == nil
     VERTICA_DB[:schema_test__table_in_schema_test].insert(:i=>1).should == 1
     VERTICA_DB[:schema_test__table_in_schema_test].first.should == {:i=>1}
-    VERTICA_DB.from('schema_test.table_in_schema_test'.lit).first.should == {:i=>1}
+    VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first.should == {:i=>1}
     VERTICA_DB.drop_table(:schema_test__table_in_schema_test)
     VERTICA_DB.create_table(:table_in_schema_test.qualify(:schema_test)){integer :i}
     VERTICA_DB[:schema_test__table_in_schema_test].first.should == nil
-    VERTICA_DB.from('schema_test.table_in_schema_test'.lit).first.should == nil
+    VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first.should == nil
     VERTICA_DB.drop_table(:table_in_schema_test.qualify(:schema_test))
   end
 
