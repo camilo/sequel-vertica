@@ -1,13 +1,9 @@
 require 'rubygems'
 require 'logger'
-
-unless Object.const_defined?('Sequel') && Sequel.const_defined?('Model')
-  $:.unshift(File.join(File.dirname(File.expand_path(__FILE__)), "../lib/"))
-  require 'sequel'
-end
+require 'sequel'
 
 begin
-  require 'spec_config.rb'
+  require 'spec_config'
 rescue LoadError
   $stderr.puts "Please create a file spec/spec_config.rb with a database connection string."
   raise
