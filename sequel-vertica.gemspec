@@ -15,7 +15,7 @@ Gem::Specification.new do |gem|
   gem.requirements  = "Vertica version 6.0 or higher"
   gem.required_ruby_version = '>= 1.9.3'
 
-  gem.add_runtime_dependency "sequel", "~> 3.45.0"
+  gem.add_runtime_dependency "sequel", "~> 4.9.0"
   gem.add_runtime_dependency "vertica", "~> 0.11.0"
 
   gem.add_development_dependency "rake", ">= 10"
