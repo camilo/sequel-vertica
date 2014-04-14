@@ -116,6 +116,40 @@ module Sequel
         end
       end
 
+      def copy_into(table, opts={})
+        data = opts[:data]
+        data = Array(data) if data.is_a?(String)
+
+        if block_given? && data
+          raise Error, "Cannot provide both a :data option and a block to copy_into"
+        elsif !block_given? && !data
+          raise Error, "Must provide either a :data option or a block to copy_into"
+        end
+
+        synchronize(opts[:server]) do |conn|
+          conn.copy(copy_into_sql(table, opts)) do |stdin|
+            if block_given?
+              while buf = yield
+                stdin << buf
+              end
+            else
+              data.each{|buff| stdin << buff}
+            end
+          end
+        end
+      end
+
+      # SQL for doing fast table insert from stdin.
+      def copy_into_sql(table, opts)
+        sql = "COPY #{table} "
+        if cols = opts[:columns]
+          sql << literal(Array(cols))
+        end
+        sql << " FROM STDIN"
+        sql << " DELIMITER '#{opts[:delimiter]}'" if opts[:delimiter]
+        sql << " #{opts[:options]}" if opts[:options]
+        sql
+      end
     end
 
     class Dataset < Sequel::Dataset
