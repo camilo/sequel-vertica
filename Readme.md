@@ -1,9 +1,9 @@
-## Sequel-vertica
+# Sequel-vertica [![Build Status](https://travis-ci.org/camilo/sequel-vertica.svg?branch=travis)](https://travis-ci.org/camilo/sequel-vertica)
 
 A third party adapter to use Vertica through sequel, most of the actual work is
 done by sequel and the vertica gem.
 
-# Usage
+## Usage
 
 The usage is straight forward as any other Sequel adapter, just make sure to
 require sequel and the sequel-vertica gem.
