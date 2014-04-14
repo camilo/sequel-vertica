@@ -1,4 +1,4 @@
-require File.join(File.dirname(File.expand_path(__FILE__)), 'spec_helper.rb')
+require 'spec_helper'
 
 unless defined?(VERTICA_DB)
   VERTICA_URL = 'vertica://vertica:vertica@localhost:5432/reality_spec' unless defined? VERTICA_URL
