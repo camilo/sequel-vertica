@@ -32,7 +32,7 @@ describe "A vertica sequel connection" do
   specify "should set a read timeout" do
     conn = Sequel.connect("#{ENV['SEQUEL_VERTICA_SPEC_DB']||VERTICA_URL}?read_timeout=1000")
     conn.synchronize do |raw_conn|
-      raw_conn.options[:read_timeout] == 1000
+      raw_conn.options[:read_timeout].should == 1000
     end
   end
 end
