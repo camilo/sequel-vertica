@@ -28,6 +28,15 @@ VERTICA_DB.create_table! :test4 do
   bytea :value
 end
 
+describe "A vertica sequel connection" do
+  specify "should set a read timeout" do
+    conn = Sequel.connect("#{ENV['SEQUEL_VERTICA_SPEC_DB']||VERTICA_URL}?read_timeout=1000")
+    conn.synchronize do |raw_conn|
+      raw_conn.options[:read_timeout] == 1000
+    end
+  end
+end
+
 describe "A Vertica database" do
 
   before do
