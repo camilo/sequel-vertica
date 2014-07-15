@@ -1,4 +1,4 @@
-require File.join(File.dirname(File.expand_path(__FILE__)), 'spec_helper.rb')
+require 'spec_helper'
 
 unless defined?(VERTICA_DB)
   VERTICA_URL = 'vertica://vertica:vertica@localhost:5432/reality_spec' unless defined? VERTICA_URL
@@ -28,7 +28,7 @@ VERTICA_DB.create_table! :test4 do
   bytea :value
 end
 
-describe "A Vertica database" do 
+describe "A Vertica database" do
 
   before do
     @db = VERTICA_DB
@@ -45,6 +45,16 @@ describe "A Vertica database" do
     ]
   end
 
+  specify "should create an auto incrementing primary key" do
+    @db.create_table! :auto_inc_test do
+      primary_key :id
+      integer :value
+    end
+    @db[<<-SQL].first[:COUNT].should == 1
+      SELECT COUNT(1) FROM v_catalog.sequences WHERE identity_table_name='auto_inc_test'
+    SQL
+  end
+
 end
 
 describe "A vertica dataset" do
@@ -57,7 +67,7 @@ describe "A vertica dataset" do
     @d.select(:name).sql.should == \
       'SELECT "name" FROM "test"'
 
-    @d.select('COUNT(*)'.lit).sql.should == \
+    @d.select(Sequel.lit('COUNT(*)')).sql.should == \
       'SELECT COUNT(*) FROM "test"'
 
     @d.select(:max.sql_function(:value)).sql.should == \
@@ -72,13 +82,13 @@ describe "A vertica dataset" do
     @d.order(:name.desc).sql.should == \
       'SELECT * FROM "test" ORDER BY "name" DESC'
 
-    @d.select('test.name AS item_name'.lit).sql.should == \
+    @d.select(Sequel.lit('test.name AS item_name')).sql.should == \
       'SELECT test.name AS item_name FROM "test"'
 
-    @d.select('"name"'.lit).sql.should == \
+    @d.select(Sequel.lit('"name"')).sql.should == \
       'SELECT "name" FROM "test"'
 
-    @d.select('max(test."name") AS "max_name"'.lit).sql.should == \
+    @d.select(Sequel.lit('max(test."name") AS "max_name"')).sql.should == \
       'SELECT max(test."name") AS "max_name" FROM "test"'
 
     @d.insert_sql(:x => :y).should =~ \
@@ -159,37 +169,35 @@ describe "A Vertica database" do
     @db = VERTICA_DB
   end
 
-  specify "should support column operations" do
-    @db.create_table!(:test2){varchar :name; integer :value}
-    @db[:test2] << {}
+  specify "should support ALTER TABLE DROP COLUMN" do
+    @db.create_table!(:test3) { varchar :name; integer :value }
+    @db[:test3].columns.should == [:name, :value]
+    @db.drop_column :test3, :value
+    @db[:test3].columns.should == [:name]
+  end
+
+  specify "It does not support ALTER TABLE ALTER COLUMN TYPE" do
+    @db.create_table!(:test4) { varchar :name; integer :value }
+    proc{ @db.set_column_type :test4, :value, :float }.should raise_error(Sequel::DatabaseError,
+                                                    /Syntax error at or near "TYPE"/)
+  end
+
+  specify "should support rename column operations" do
+    @db.create_table!(:test5) { varchar :name; integer :value }
+    @db[:test5] << {:name => 'mmm', :value => 111}
+    @db.rename_column :test5, :value, :val
+    @db[:test5].columns.should == [:name, :val]
+    @db[:test5].first[:val].should == 111
+  end
+
+  specify "should support add column operations" do
+    @db.create_table!(:test2) { varchar :name; integer :value }
     @db[:test2].columns.should == [:name, :value]
 
     @db.add_column :test2, :xyz, :varchar, :default => '000'
     @db[:test2].columns.should == [:name, :value, :xyz]
     @db[:test2] << {:name => 'mmm', :value => 111}
     @db[:test2].first[:xyz].should == '000'
-
-    @db[:test2].columns.should == [:name, :value, :xyz]
-    proc{ @db.drop_column :test2, :xyz }.should raise_error(Sequel::DatabaseError,
-                                                    /ALTER TABLE DROP COLUMN not supported/)
-
-    @db[:test2].columns.should ==[:name, :value, :xyz]
-
-    @db[:test2].delete
-    @db.add_column :test2, :xyz2, :varchar, :default => '000'
-    @db[:test2] << {:name => 'mmm', :value => 111, :xyz2 => 'qqqq'}
-
-    @db[:test2].columns.should == [:name, :value, :xyz, :xyz2]
-    @db.rename_column :test2, :xyz, :zyx
-    @db[:test2].columns.should == [:name, :value, :zyx, :xyz2]
-    @db[:test2].first[:xyz2].should == 'qqqq'
-
-    @db.add_column :test2, :xyz, :float
-    @db[:test2].delete
-    @db[:test2] << {:name => 'mmm', :value => 111, :xyz => 56.78}
-
-    proc{ @db.set_column_type :test2, :xyz, :integer }.should raise_error(Sequel::DatabaseError,
-                                                    /ALTER TABLE ALTER COLUMN not supported/)
   end
 
   specify "#locks should be a dataset returning database locks " do
@@ -231,7 +239,6 @@ describe "Vertica::Database schema qualified tables" do
 
   after do
     VERTICA_DB << "DROP SCHEMA schema_test CASCADE"
-    VERTICA_DB.default_schema = nil
   end
 
   specify "should be able to create, drop, select and insert into tables in a given schema" do
@@ -239,11 +246,11 @@ describe "Vertica::Database schema qualified tables" do
     VERTICA_DB[:schema_test__table_in_schema_test].first.should == nil
     VERTICA_DB[:schema_test__table_in_schema_test].insert(:i=>1).should == 1
     VERTICA_DB[:schema_test__table_in_schema_test].first.should == {:i=>1}
-    VERTICA_DB.from('schema_test.table_in_schema_test'.lit).first.should == {:i=>1}
+    VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first.should == {:i=>1}
     VERTICA_DB.drop_table(:schema_test__table_in_schema_test)
     VERTICA_DB.create_table(:table_in_schema_test.qualify(:schema_test)){integer :i}
     VERTICA_DB[:schema_test__table_in_schema_test].first.should == nil
-    VERTICA_DB.from('schema_test.table_in_schema_test'.lit).first.should == nil
+    VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first.should == nil
     VERTICA_DB.drop_table(:table_in_schema_test.qualify(:schema_test))
   end
 
