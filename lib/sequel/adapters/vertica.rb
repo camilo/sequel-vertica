@@ -34,7 +34,7 @@ module Sequel
           :port => opts[:port],
           :schema => opts[:schema],
           :database => opts[:database],
-          :read_timeout => opts[:read_timeout],
+          :read_timeout => opts[:read_timeout].to_i,
           :ssl => opts[:ssl]
         )
       end
