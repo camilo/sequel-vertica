@@ -17,3 +17,4 @@ test/version_tmp
 tmp
 spec/spec_config.rb
 .rbenv-version
+vendor/

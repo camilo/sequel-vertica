@@ -32,7 +32,7 @@ describe "A vertica sequel connection" do
   specify "should set a read timeout" do
     conn = Sequel.connect("#{ENV['SEQUEL_VERTICA_SPEC_DB']||VERTICA_URL}?read_timeout=1000")
     conn.synchronize do |raw_conn|
-      raw_conn.options[:read_timeout].should == 1000
+      expect(raw_conn.options[:read_timeout]).to eq(1000)
     end
   end
 end
@@ -44,14 +44,14 @@ describe "A Vertica database" do
   end
 
   specify "should correctly parse the schema" do
-    @db.schema(:test3, :reload=>true).should == [
+    expect(@db.schema(:test3, :reload=>true)).to eq([
       [:value, {:type=>:integer, :allow_null=>true, :default=>nil, :ruby_default=>nil, :db_type=>"int", :primary_key=>false}],
       [:time, {:type=>:datetime, :allow_null=>true, :default=>nil, :ruby_default=>nil, :db_type=>"timestamp", :primary_key=>false}]
-    ]
-    @db.schema(:test4, :reload=>true).should == [
-      [:name, {:type=>:string, :allow_null=>true, :default=>nil, :ruby_default=>nil, :db_type=>"varchar(20)", :primary_key=>false}],
-      [:value, {:type=>:blob, :allow_null=>true, :default=>nil, :ruby_default=>nil, :db_type=>"varbinary(80)", :primary_key=>false}]
-    ]
+    ])
+    expect(@db.schema(:test4, :reload=>true)).to eq([
+      [:name, {:allow_null=>true, :default=>nil, :db_type=>"varchar(20)", :type=>:string, :primary_key=>false, :ruby_default=>nil, :max_length=>20}],
+      [:value, {:allow_null=>true, :default=>nil, :db_type=>"varbinary(80)", :type=>:blob, :primary_key=>false, :ruby_default=>nil}]
+    ])
   end
 
   specify "should create an auto incrementing primary key" do
@@ -59,7 +59,7 @@ describe "A Vertica database" do
       primary_key :id
       integer :value
     end
-    @db[<<-SQL].first[:COUNT].should == 1
+    expect(@db[<<-SQL].first[:COUNT]).to eq(1)
       SELECT COUNT(1) FROM v_catalog.sequences WHERE identity_table_name='auto_inc_test'
     SQL
   end
@@ -73,63 +73,77 @@ describe "A vertica dataset" do
   end
 
   specify "should quote columns and tables using double quotes if quoting identifiers" do
-    @d.select(:name).sql.should == \
+    expect(@d.select(:name).sql).to eq( \
       'SELECT "name" FROM "test"'
+    )
 
-    @d.select(Sequel.lit('COUNT(*)')).sql.should == \
+    expect(@d.select(Sequel.lit('COUNT(*)')).sql).to eq( \
       'SELECT COUNT(*) FROM "test"'
+    )
 
-    @d.select(:max.sql_function(:value)).sql.should == \
+    expect(@d.select(:max.sql_function(:value)).sql).to eq( \
       'SELECT max("value") FROM "test"'
+    )
 
-    @d.select(:NOW.sql_function).sql.should == \
+    expect(@d.select(:NOW.sql_function).sql).to eq( \
     'SELECT NOW() FROM "test"'
+    )
 
-    @d.select(:max.sql_function(:items__value)).sql.should == \
+    expect(@d.select(:max.sql_function(:items__value)).sql).to eq( \
       'SELECT max("items"."value") FROM "test"'
+    )
 
-    @d.order(:name.desc).sql.should == \
+    expect(@d.order(:name.desc).sql).to eq( \
       'SELECT * FROM "test" ORDER BY "name" DESC'
+    )
 
-    @d.select(Sequel.lit('test.name AS item_name')).sql.should == \
+    expect(@d.select(Sequel.lit('test.name AS item_name')).sql).to eq( \
       'SELECT test.name AS item_name FROM "test"'
+    )
 
-    @d.select(Sequel.lit('"name"')).sql.should == \
+    expect(@d.select(Sequel.lit('"name"')).sql).to eq( \
       'SELECT "name" FROM "test"'
+    )
 
-    @d.select(Sequel.lit('max(test."name") AS "max_name"')).sql.should == \
+    expect(@d.select(Sequel.lit('max(test."name") AS "max_name"')).sql).to eq( \
       'SELECT max(test."name") AS "max_name" FROM "test"'
+    )
 
-    @d.insert_sql(:x => :y).should =~ \
+    expect(@d.insert_sql(:x => :y)).to match( \
       /\AINSERT INTO "test" \("x"\) VALUES \("y"\)( RETURNING NULL)?\z/
+    )
 
   end
 
   specify "should quote fields correctly when reversing the order if quoting identifiers" do
-    @d.reverse_order(:name).sql.should == \
+    expect(@d.reverse_order(:name).sql).to eq( \
       'SELECT * FROM "test" ORDER BY "name" DESC'
+    )
 
-    @d.reverse_order(:name.desc).sql.should == \
+    expect(@d.reverse_order(:name.desc).sql).to eq( \
       'SELECT * FROM "test" ORDER BY "name" ASC'
+    )
 
-    @d.reverse_order(:name, :test.desc).sql.should == \
+    expect(@d.reverse_order(:name, :test.desc).sql).to eq( \
       'SELECT * FROM "test" ORDER BY "name" DESC, "test" ASC'
+    )
 
-    @d.reverse_order(:name.desc, :test).sql.should == \
+    expect(@d.reverse_order(:name.desc, :test).sql).to eq( \
       'SELECT * FROM "test" ORDER BY "name" ASC, "test" DESC'
+    )
   end
 
   specify "should support regexps" do
     @d << {:name => 'abc', :value => 1}
     @d << {:name => 'bcd', :value => 2}
 
-    @d.filter(:name => /bc/).count.should == 2
-    @d.filter(:name => /^bc/).count.should == 1
+    expect(@d.filter(:name => /bc/).count).to eq(2)
+    expect(@d.filter(:name => /^bc/).count).to eq(1)
   end
 
   specify "#columns should return the correct column names" do
-    @d.columns!.should == [:name, :value]
-    @d.select(:name).columns!.should == [:name]
+    expect(@d.columns!).to eq([:name, :value])
+    expect(@d.select(:name).columns!).to eq([:name])
   end
 end
 
@@ -148,25 +162,25 @@ describe "A Vertica dataset with a timestamp field" do
     t = Time.now
     @d << {:value=>1, :time=>t}
     t2 = @d[:value =>1][:time]
-    @d.literal(t2).should == @d.literal(t)
-    t2.strftime('%Y-%m-%d %H:%M:%S').should == t.strftime('%Y-%m-%d %H:%M:%S')
-    (t2.is_a?(Time) ? t2.usec : t2.strftime('%N').to_i/1000).should == t.usec
+    expect(@d.literal(t2)).to eq(@d.literal(t))
+    expect(t2.strftime('%Y-%m-%d %H:%M:%S')).to eq(t.strftime('%Y-%m-%d %H:%M:%S'))
+    expect(t2.is_a?(Time) ? t2.usec : t2.strftime('%N').to_i/1000).to eq(t.usec)
   end
 
   cspecify "should store milliseconds in time fields for DateTime objects", :do, :swift do
     t = DateTime.now
     @d << {:value=>1, :time=>t}
     t2 = @d[:value =>1][:time]
-    @d.literal(t2).should == @d.literal(t)
-    t2.strftime('%Y-%m-%d %H:%M:%S').should == t.strftime('%Y-%m-%d %H:%M:%S')
-    (t2.is_a?(Time) ? t2.usec : t2.strftime('%N').to_i/1000).should == t.strftime('%N').to_i/1000
+    expect(@d.literal(t2)).to eq(@d.literal(t))
+    expect(t2.strftime('%Y-%m-%d %H:%M:%S')).to eq(t.strftime('%Y-%m-%d %H:%M:%S'))
+    expect(t2.is_a?(Time) ? t2.usec : t2.strftime('%N').to_i/1000).to eq(t.strftime('%N').to_i/1000)
   end
 
   describe "Verticas's EXPLAIN and EXPLAIN LOCAL" do
     specify "should not raise errors" do
       @d = VERTICA_DB[:test3]
-      proc{@d.explain}.should_not raise_error
-      proc{@d.explain(:local => true)}.should_not raise_error
+      expect{@d.explain}.not_to raise_error
+      expect{@d.explain(:local => true)}.not_to raise_error
     end
   end
 
@@ -180,14 +194,14 @@ describe "A Vertica database" do
 
   specify "should support ALTER TABLE DROP COLUMN" do
     @db.create_table!(:test3) { varchar :name; integer :value }
-    @db[:test3].columns.should == [:name, :value]
+    expect(@db[:test3].columns).to eq([:name, :value])
     @db.drop_column :test3, :value
-    @db[:test3].columns.should == [:name]
+    expect(@db[:test3].columns).to eq([:name])
   end
 
   specify "It does not support ALTER TABLE ALTER COLUMN TYPE" do
     @db.create_table!(:test4) { varchar :name; integer :value }
-    proc{ @db.set_column_type :test4, :value, :float }.should raise_error(Sequel::DatabaseError,
+    expect{ @db.set_column_type :test4, :value, :float }.to raise_error(Sequel::DatabaseError,
                                                     /Syntax error at or near "TYPE"/)
   end
 
@@ -195,23 +209,23 @@ describe "A Vertica database" do
     @db.create_table!(:test5) { varchar :name; integer :value }
     @db[:test5] << {:name => 'mmm', :value => 111}
     @db.rename_column :test5, :value, :val
-    @db[:test5].columns.should == [:name, :val]
-    @db[:test5].first[:val].should == 111
+    expect(@db[:test5].columns).to eq([:name, :val])
+    expect(@db[:test5].first[:val]).to eq(111)
   end
 
   specify "should support add column operations" do
     @db.create_table!(:test2) { varchar :name; integer :value }
-    @db[:test2].columns.should == [:name, :value]
+    expect(@db[:test2].columns).to eq([:name, :value])
 
     @db.add_column :test2, :xyz, :varchar, :default => '000'
-    @db[:test2].columns.should == [:name, :value, :xyz]
+    expect(@db[:test2].columns).to eq([:name, :value, :xyz])
     @db[:test2] << {:name => 'mmm', :value => 111}
-    @db[:test2].first[:xyz].should == '000'
+    expect(@db[:test2].first[:xyz]).to eq('000')
   end
 
   specify "#locks should be a dataset returning database locks " do
-    @db.locks.should be_a_kind_of(Sequel::Dataset)
-    @db.locks.all.should be_a_kind_of(Array)
+    expect(@db.locks).to be_a_kind_of(Sequel::Dataset)
+    expect(@db.locks.all).to be_a_kind_of(Array)
   end
 end
 
@@ -228,14 +242,14 @@ describe "Vertica::Dataset#insert" do
   end
 
   specify "should work with static SQL" do
-    @ds.with_sql('INSERT INTO test5 (value) VALUES (10)').insert.should == 1
-    @db['INSERT INTO test5 (value) VALUES (20)'].insert.should == 1
-    @ds.all.should == [{:value=>10}, {:value=>20}]
+    expect(@ds.with_sql('INSERT INTO test5 (value) VALUES (10)').insert).to eq(1)
+    expect(@db['INSERT INTO test5 (value) VALUES (20)'].insert).to eq(1)
+    expect(@ds.all).to include({:value=>10}, {:value=>20})
   end
 
   specify "should insert correctly if using a column array and a value array" do
-    @ds.insert([:value], [10]).should == 1
-    @ds.all.should == [{:value=>10}]
+    expect(@ds.insert([:value], [10])).to eq(1)
+    expect(@ds.all).to eq([{:value=>10}])
   end
 end
 
@@ -252,37 +266,37 @@ describe "Vertica::Database schema qualified tables" do
 
   specify "should be able to create, drop, select and insert into tables in a given schema" do
     VERTICA_DB.create_table(:schema_test__table_in_schema_test){integer :i}
-    VERTICA_DB[:schema_test__table_in_schema_test].first.should == nil
-    VERTICA_DB[:schema_test__table_in_schema_test].insert(:i=>1).should == 1
-    VERTICA_DB[:schema_test__table_in_schema_test].first.should == {:i=>1}
-    VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first.should == {:i=>1}
+    expect(VERTICA_DB[:schema_test__table_in_schema_test].first).to eq(nil)
+    expect(VERTICA_DB[:schema_test__table_in_schema_test].insert(:i=>1)).to eq(1)
+    expect(VERTICA_DB[:schema_test__table_in_schema_test].first).to eq({:i=>1})
+    expect(VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first).to eq({:i=>1})
     VERTICA_DB.drop_table(:schema_test__table_in_schema_test)
     VERTICA_DB.create_table(:table_in_schema_test.qualify(:schema_test)){integer :i}
-    VERTICA_DB[:schema_test__table_in_schema_test].first.should == nil
-    VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first.should == nil
+    expect(VERTICA_DB[:schema_test__table_in_schema_test].first).to eq(nil)
+    expect(VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first).to eq(nil)
     VERTICA_DB.drop_table(:table_in_schema_test.qualify(:schema_test))
   end
 
   specify "#tables should not include tables in a default non-public schema" do
     VERTICA_DB.create_table(:schema_test__table_in_schema_test){integer :i}
-    VERTICA_DB.tables.should include(:table_in_schema_test)
-    VERTICA_DB.tables.should_not include(:tables)
-    VERTICA_DB.tables.should_not include(:columns)
-    VERTICA_DB.tables.should_not include(:locks)
-    VERTICA_DB.tables.should_not include(:domain_udt_usage)
+    expect(VERTICA_DB.tables).to include(:table_in_schema_test)
+    expect(VERTICA_DB.tables).not_to include(:tables)
+    expect(VERTICA_DB.tables).not_to include(:columns)
+    expect(VERTICA_DB.tables).not_to include(:locks)
+    expect(VERTICA_DB.tables).not_to include(:domain_udt_usage)
   end
 
   specify "#tables should return tables in the schema provided by the :schema argument" do
     VERTICA_DB.create_table(:schema_test__table_in_schema_test){integer :i}
-    VERTICA_DB.tables(:schema=>:schema_test).should == [:table_in_schema_test]
+    expect(VERTICA_DB.tables(:schema=>:schema_test)).to eq([:table_in_schema_test])
   end
 
   specify "#schema should not include columns from tables in a default non-public schema" do
     VERTICA_DB.create_table(:schema_test__domains){integer :i}
     sch = VERTICA_DB.schema(:domains)
     cs = sch.map{|x| x.first}
-    cs.should include(:i)
-    cs.should_not include(:data_type)
+    expect(cs).to include(:i)
+    expect(cs).not_to include(:data_type)
   end
 
   specify "#schema should only include columns from the table in the given :schema argument" do
@@ -290,14 +304,14 @@ describe "Vertica::Database schema qualified tables" do
     VERTICA_DB.create_table(:schema_test__domains){integer :i}
     sch = VERTICA_DB.schema(:domains, :schema=>:schema_test)
     cs = sch.map{|x| x.first}
-    cs.should include(:i)
-    cs.should_not include(:d)
+    expect(cs).to include(:i)
+    expect(cs).not_to include(:d)
     VERTICA_DB.drop_table(:domains)
   end
 
   specify "#table_exists? should see if the table is in a given schema" do
     VERTICA_DB.create_table(:schema_test__schema_test){integer :i}
-    VERTICA_DB.table_exists?(:schema_test__schema_test).should == true
+    expect(VERTICA_DB.table_exists?(:schema_test__schema_test)).to eq(true)
   end
 
 end
