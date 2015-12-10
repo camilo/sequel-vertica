@@ -29,7 +29,7 @@ VERTICA_DB.create_table! :test4 do
 end
 
 describe "A vertica sequel connection" do
-  specify "should set a read timeout" do
+  specify "sets a read timeout" do
     conn = Sequel.connect("#{ENV['SEQUEL_VERTICA_SPEC_DB']||VERTICA_URL}?read_timeout=1000")
     conn.synchronize do |raw_conn|
       expect(raw_conn.options[:read_timeout]).to eq(1000)
@@ -43,7 +43,7 @@ describe "A Vertica database" do
     @db = VERTICA_DB
   end
 
-  specify "should correctly parse the schema" do
+  specify "correctly parses the schema" do
     expect(@db.schema(:test3, :reload=>true)).to eq([
       [:value, {:type=>:integer, :allow_null=>true, :default=>nil, :ruby_default=>nil, :db_type=>"int", :primary_key=>false}],
       [:time, {:type=>:datetime, :allow_null=>true, :default=>nil, :ruby_default=>nil, :db_type=>"timestamp", :primary_key=>false}]
@@ -54,7 +54,7 @@ describe "A Vertica database" do
     ])
   end
 
-  specify "should create an auto incrementing primary key" do
+  specify "creates an auto incrementing primary key" do
     @db.create_table! :auto_inc_test do
       primary_key :id
       integer :value
@@ -72,7 +72,7 @@ describe "A vertica dataset" do
     @d.delete if @d.count > 0 # Vertica will throw an error if the table has just been created and does not have a super projection yet.
   end
 
-  specify "should quote columns and tables using double quotes if quoting identifiers" do
+  specify "quotes columns and tables using double quotes if quoting identifiers" do
     expect(@d.select(:name).sql).to eq( \
       'SELECT "name" FROM "test"'
     )
@@ -115,7 +115,7 @@ describe "A vertica dataset" do
 
   end
 
-  specify "should quote fields correctly when reversing the order if quoting identifiers" do
+  specify "quotes fields correctly when reversing the order if quoting identifiers" do
     expect(@d.reverse_order(:name).sql).to eq( \
       'SELECT * FROM "test" ORDER BY "name" DESC'
     )
@@ -133,7 +133,7 @@ describe "A vertica dataset" do
     )
   end
 
-  specify "should support regexps" do
+  specify "supports regexps" do
     @d << {:name => 'abc', :value => 1}
     @d << {:name => 'bcd', :value => 2}
 
@@ -141,7 +141,7 @@ describe "A vertica dataset" do
     expect(@d.filter(:name => /^bc/).count).to eq(1)
   end
 
-  specify "#columns should return the correct column names" do
+  specify "#columns returns the correct column names" do
     expect(@d.columns!).to eq([:name, :value])
     expect(@d.select(:name).columns!).to eq([:name])
   end
@@ -158,7 +158,7 @@ describe "A Vertica dataset with a timestamp field" do
     @db.convert_infinite_timestamps = false if @db.adapter_scheme == :postgres
   end
 
-  cspecify "should store milliseconds in time fields for Time objects", :do, :swift do
+  cspecify "stores milliseconds in time fields for Time objects", :do, :swift do
     t = Time.now
     @d << {:value=>1, :time=>t}
     t2 = @d[:value =>1][:time]
@@ -167,7 +167,7 @@ describe "A Vertica dataset with a timestamp field" do
     expect(t2.is_a?(Time) ? t2.usec : t2.strftime('%N').to_i/1000).to eq(t.usec)
   end
 
-  cspecify "should store milliseconds in time fields for DateTime objects", :do, :swift do
+  cspecify "stores milliseconds in time fields for DateTime objects", :do, :swift do
     t = DateTime.now
     @d << {:value=>1, :time=>t}
     t2 = @d[:value =>1][:time]
@@ -177,13 +177,34 @@ describe "A Vertica dataset with a timestamp field" do
   end
 
   describe "Verticas's EXPLAIN and EXPLAIN LOCAL" do
-    specify "should not raise errors" do
+    specify "do not raise errors" do
       @d = VERTICA_DB[:test3]
       expect{@d.explain}.not_to raise_error
       expect{@d.explain(:local => true)}.not_to raise_error
     end
   end
 
+  describe "Vertica's TIMESERIES clause" do
+    let(:timeseries_opts) {
+      {
+        alias: :slice_time,
+        time_unit: '1 second',
+        over: { order: :occurred_at }
+      }
+    }
+    [:alias, :time_unit, :over].each do |option|
+      specify "requires #{option}" do
+        expect { @d.timeseries(timeseries_opts.reject { |k,v| k == option }) }.to \
+          raise_error(RuntimeError, /timeseries requires.*#{option}/)
+      end
+    end
+
+    specify "it renders to SQL correctly" do
+      expect(@d.timeseries(timeseries_opts).sql).to eq(\
+        %(SELECT * FROM "test3" TIMESERIES slice_time AS '1 second' OVER (ORDER BY "occurred_at"))
+      )
+    end
+  end
 end
 
 
@@ -192,7 +213,7 @@ describe "A Vertica database" do
     @db = VERTICA_DB
   end
 
-  specify "should support ALTER TABLE DROP COLUMN" do
+  specify "supports ALTER TABLE DROP COLUMN" do
     @db.create_table!(:test3) { varchar :name; integer :value }
     expect(@db[:test3].columns).to eq([:name, :value])
     @db.drop_column :test3, :value
@@ -205,7 +226,7 @@ describe "A Vertica database" do
                                                     /Syntax error at or near "TYPE"/)
   end
 
-  specify "should support rename column operations" do
+  specify "supports rename column operations" do
     @db.create_table!(:test5) { varchar :name; integer :value }
     @db[:test5] << {:name => 'mmm', :value => 111}
     @db.rename_column :test5, :value, :val
@@ -213,7 +234,7 @@ describe "A Vertica database" do
     expect(@db[:test5].first[:val]).to eq(111)
   end
 
-  specify "should support add column operations" do
+  specify "supports add column operations" do
     @db.create_table!(:test2) { varchar :name; integer :value }
     expect(@db[:test2].columns).to eq([:name, :value])
 
@@ -241,13 +262,13 @@ describe "Vertica::Dataset#insert" do
     @db.drop_table?(:test5)
   end
 
-  specify "should work with static SQL" do
+  specify "works with static SQL" do
     expect(@ds.with_sql('INSERT INTO test5 (value) VALUES (10)').insert).to eq(1)
     expect(@db['INSERT INTO test5 (value) VALUES (20)'].insert).to eq(1)
     expect(@ds.all).to include({:value=>10}, {:value=>20})
   end
 
-  specify "should insert correctly if using a column array and a value array" do
+  specify "inserts correctly if using a column array and a value array" do
     expect(@ds.insert([:value], [10])).to eq(1)
     expect(@ds.all).to eq([{:value=>10}])
   end
