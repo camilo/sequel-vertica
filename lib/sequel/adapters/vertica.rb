@@ -132,6 +132,11 @@ module Sequel
       TIMESERIES = ' TIMESERIES '.freeze
       OVER = ' OVER '.freeze
       AS = ' AS '.freeze
+      SPACE = Dataset::SPACE
+      PAREN_OPEN = Dataset::PAREN_OPEN
+      PAREN_CLOSE = Dataset::PAREN_CLOSE
+      ESCAPE = Dataset::ESCAPE
+      BACKSLASH = Dataset::BACKSLASH
 
       Dataset.def_sql_method(self, :select, %w(with select distinct columns from join timeseries where group having compounds order limit lock))
 
@@ -178,6 +183,22 @@ module Sequel
 
       def supports_window_functions?
         true
+      end
+
+      # Use the ILIKE and NOT ILIKE operators.
+      def complex_expression_sql_append(sql, op, args)
+        case op
+          when :ILIKE, :'NOT ILIKE'
+            sql << PAREN_OPEN
+            literal_append(sql, args.at(0))
+            sql << SPACE << op.to_s << SPACE
+            literal_append(sql, args.at(1))
+            sql << ESCAPE
+            literal_append(sql, BACKSLASH)
+            sql << PAREN_CLOSE
+          else
+            super
+        end
       end
     end
   end

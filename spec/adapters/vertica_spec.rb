@@ -141,6 +141,11 @@ describe "A vertica dataset" do
     expect(@d.filter(:name => /^bc/).count).to eq(1)
   end
 
+  specify "should support ilike operator" do
+    expect(@d.where(Sequel.ilike(:name, '%acme%')).sql).to eq(%{SELECT * FROM "test" WHERE ("name" ILIKE '%acme%' ESCAPE '\\')})
+    expect(@d.where(~Sequel.ilike(:name, '%acme%')).sql).to eq(%{SELECT * FROM "test" WHERE ("name" NOT ILIKE '%acme%' ESCAPE '\\')})
+  end
+
   specify "#columns returns the correct column names" do
     expect(@d.columns!).to eq([:name, :value])
     expect(@d.select(:name).columns!).to eq([:name])
