@@ -16,7 +16,7 @@ Gem::Specification.new do |gem|
   gem.required_ruby_version = '>= 1.9.3'
 
   gem.add_runtime_dependency "sequel", "~> 4.14"
-  gem.add_runtime_dependency "vertica", "~> 0.11.1"
+  gem.add_runtime_dependency "vertica", "~> 1.0"
 
   gem.add_development_dependency "rake", ">= 10"
   gem.add_development_dependency "rspec" , "~> 3.1"
