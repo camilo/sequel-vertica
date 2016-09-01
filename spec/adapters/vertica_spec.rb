@@ -177,7 +177,7 @@ describe "A Vertica dataset with a timestamp field" do
   end
 
   describe "Verticas's EXPLAIN and EXPLAIN LOCAL" do
-    specify "do not raise errors" do
+    specify "should not raise errors" do
       @d = VERTICA_DB[:test3]
       expect{@d.explain}.not_to raise_error
       expect{@d.explain(:local => true)}.not_to raise_error
@@ -195,7 +195,7 @@ describe "A Vertica dataset with a timestamp field" do
     [:alias, :time_unit, :over].each do |option|
       specify "requires #{option}" do
         expect { @d.timeseries(timeseries_opts.reject { |k,v| k == option }) }.to \
-          raise_error(RuntimeError, /timeseries requires.*#{option}/)
+          raise_error(ArgumentError, /timeseries requires.*#{option}/)
       end
     end
 

@@ -136,9 +136,9 @@ module Sequel
       Dataset.def_sql_method(self, :select, %w(with select distinct columns from join timeseries where group having compounds order limit lock))
 
       def timeseries(opts={})
-        fail "timeseries requires :alias" unless opts[:alias]
-        fail "timeseries requires :time_unit" unless opts[:time_unit]
-        fail "timeseries requires an :over clause" unless opts[:over]
+        raise ArgumentError, "timeseries requires :alias" unless opts[:alias]
+        raise ArgumentError, "timeseries requires :time_unit" unless opts[:time_unit]
+        raise ArgumentError, "timeseries requires an :over clause" unless opts[:over]
 
         clone(timeseries: {
                 alias: opts[:alias],
