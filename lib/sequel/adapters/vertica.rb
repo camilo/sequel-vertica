@@ -32,7 +32,6 @@ module Sequel
           :user => opts[:user],
           :password => opts[:password],
           :port => opts[:port],
-          :schema => opts[:schema],
           :database => opts[:database],
           :read_timeout => opts[:read_timeout].nil? ? nil : opts[:read_timeout].to_i,
           :ssl => opts[:ssl]
@@ -56,6 +55,60 @@ module Sequel
       end
 
       alias_method :execute_dui, :execute
+
+      # +copy_into+ uses Vertica's +COPY FROM STDIN+ SQL statement to do very fast inserts
+      # into a table using any formatting options supported by Vertica.
+      # This method is only supported if vertica 1.0.0+ is the underlying ruby driver.
+      # This method should only be called if you want
+      # results returned to the client.  If you are using +COPY FROM+
+      # with a filename, you should just use +run+ instead of this method.
+      #
+      # The following options are respected:
+      #
+      # :columns :: The columns to insert into, with the same order as the columns in the
+      #             input data.  If this isn't given, uses all columns in the table.
+      # :data :: The data to copy to Vertica, which should already be in pipe-separated or CSV
+      #          format.  This can be either a string, or any object that responds to
+      #          each and yields string.
+      # :format :: Vertica does not support FORMAT on the data (instead, it supports FORMAT on
+      #            the individual columns). However, for postgresql compatibility, if this
+      #            option is set to :csv, then " DELIMITER ','" will be appended to the
+      #            :options string below. If :options is not specified, it will be set to
+      #            " DELIMITER ','".
+      # :options :: An options SQL string to use, which should contain space-separated options.
+      #
+      # If a block is provided and :data option is not, this will yield to the block repeatedly.
+      # The block should return a string, or nil to signal that it is finished.
+      def copy_into(table, opts=OPTS)
+        data = opts[:data]
+        if opts[:format] == :csv
+          opts[:options] ||= ""
+          opts[:options] += " DELIMITER ','"
+        end
+        data = Array(data) if data.is_a?(String)
+
+        if block_given? && data
+          raise ArgumentError, "Cannot provide both a :data option and a block to copy_into"
+        elsif !block_given? && !data
+          raise ArgumentError, "Must provide either a :data option or a block to copy_into"
+        end
+
+        synchronize(opts[:server]) do |conn|
+          conn.copy(copy_into_sql(table, opts)) do |io|
+            begin
+              if block_given?
+                while buf = yield
+                  io.write(buf.chomp + "\n")
+                end
+              else
+                data.each { |buff|
+                  io.write(buff.chomp + "\n")
+                }
+              end
+            end
+          end
+        end
+      end
 
       def supports_create_table_if_not_exists?
         true
@@ -106,7 +159,7 @@ module Sequel
 
         selector = [:column_name, :constraint_name, :is_nullable.as(:allow_null),
                     (:column_default).as(:default), (:data_type).as(:db_type)]
-        filter = { :columns__table_name => table_name }
+        filter = { :columns__table_name => table_name.to_s }
         filter[:columns__table_schema] = schema.to_s if schema
 
         dataset = metadata_dataset.
@@ -122,6 +175,19 @@ module Sequel
           [row.delete(:column_name).to_sym, row]
         end
       end
+
+      # SQL for doing fast table insert from stdin.
+      def copy_into_sql(table, opts)
+        sql = "COPY #{literal(table)} "
+        if cols = opts[:columns]
+          sql << literal(Array(cols))
+        end
+        sql << " FROM STDIN"
+        if opts[:options]
+          sql << " #{opts[:options]}" if opts[:options]
+        end
+        sql
+      end
     end
 
     class Dataset < Sequel::Dataset
@@ -132,6 +198,7 @@ module Sequel
       TIMESERIES = ' TIMESERIES '.freeze
       OVER = ' OVER '.freeze
       AS = ' AS '.freeze
+      REGEXP_LIKE = 'REGEXP_LIKE'.freeze
       SPACE = Dataset::SPACE
       PAREN_OPEN = Dataset::PAREN_OPEN
       PAREN_CLOSE = Dataset::PAREN_CLOSE
@@ -163,13 +230,13 @@ module Sequel
         return @columns if @columns
         ds = unfiltered.unordered.clone(:distinct => nil, :limit => 0, :offset => nil)
         res = @db.execute(ds.select_sql)
-        @columns = res.columns.map { |c| c.name }
+        @columns = res.columns.map { |c| c.name.to_sym }
         @columns
       end
 
       def fetch_rows(sql)
         execute(sql) do |row|
-          yield row
+          yield row.to_h.inject({}) { |a, (k,v)| a[k.to_sym] = v; a }
         end
       end
 
@@ -185,19 +252,37 @@ module Sequel
         true
       end
 
-      # Use the ILIKE and NOT ILIKE operators.
+      def regexp_like(sql, source, pattern, options = nil)
+        sql << REGEXP_LIKE
+        sql << PAREN_OPEN
+        literal_append(sql, source)
+        sql << COMMA
+        literal_append(sql, pattern)
+
+        if options
+          sql << COMMA
+          literal_append(sql, options)
+        end
+
+        sql << PAREN_CLOSE
+      end
+
       def complex_expression_sql_append(sql, op, args)
         case op
-          when :ILIKE, :'NOT ILIKE'
-            sql << PAREN_OPEN
-            literal_append(sql, args.at(0))
-            sql << SPACE << op.to_s << SPACE
-            literal_append(sql, args.at(1))
-            sql << ESCAPE
-            literal_append(sql, BACKSLASH)
-            sql << PAREN_CLOSE
-          else
-            super
+        when :ILIKE, :'NOT ILIKE'
+          sql << PAREN_OPEN
+          literal_append(sql, args.at(0))
+          sql << SPACE << op.to_s << SPACE
+          literal_append(sql, args.at(1))
+          sql << ESCAPE
+          literal_append(sql, BACKSLASH)
+          sql << PAREN_CLOSE
+        when :'~'
+          regexp_like(sql, args[0], args[1])
+        when :'~*'
+          regexp_like(sql, args[0], args[1], 'i')
+        else
+          super
         end
       end
     end
