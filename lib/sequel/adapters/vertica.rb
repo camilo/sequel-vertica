@@ -126,9 +126,33 @@ module Sequel
 
     class Dataset < Sequel::Dataset
       Database::DatasetClass = self
-      EXPLAIN = 'EXPLAIN '
-      EXPLAIN_LOCAL = 'EXPLAIN LOCAL '
-      QUERY_PLAN = 'QUERY PLAN'
+      EXPLAIN = 'EXPLAIN '.freeze
+      EXPLAIN_LOCAL = 'EXPLAIN LOCAL '.freeze
+      QUERY_PLAN = 'QUERY PLAN'.freeze
+      TIMESERIES = ' TIMESERIES '.freeze
+      OVER = ' OVER '.freeze
+      AS = ' AS '.freeze
+
+      Dataset.def_sql_method(self, :select, %w(with select distinct columns from join timeseries where group having compounds order limit lock))
+
+      def timeseries(opts={})
+        raise ArgumentError, "timeseries requires :alias" unless opts[:alias]
+        raise ArgumentError, "timeseries requires :time_unit" unless opts[:time_unit]
+        raise ArgumentError, "timeseries requires an :over clause" unless opts[:over]
+
+        clone(timeseries: {
+                alias: opts[:alias],
+                time_unit: opts[:time_unit],
+                over: Sequel::SQL::Window.new(opts[:over])
+              })
+      end
+
+      def select_timeseries_sql(sql)
+        if ts_opts = opts[:timeseries]
+          sql << TIMESERIES << ts_opts[:alias].to_s << AS << "'#{ts_opts[:time_unit]}'" << OVER
+          window_sql_append(sql, ts_opts[:over].opts)
+        end
+      end
 
       def columns
         return @columns if @columns
@@ -149,6 +173,10 @@ module Sequel
       end
 
       def supports_regexp?
+        true
+      end
+
+      def supports_window_functions?
         true
       end
     end
