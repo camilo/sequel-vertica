@@ -282,11 +282,13 @@ describe "Vertica::Database#copy_into" do
   end
 
   specify "errors if both a block and :data are specified" do
-    expect { @db.copy_into(:test, data: ["a string"]) { "a block" } }.to raise_error(ArgumentError)
+    expect { @db.copy_into(:test, data: ["a string"]) { "a block" } }.to \
+      raise_error(ArgumentError, "Cannot provide both a :data option and a block to copy_into")
   end
 
   specify "errors if neither block nor :data are specified" do
-    expect { @db.copy_into(:test) }.to raise_error(ArgumentError)
+    expect { @db.copy_into(:test) }.to \
+      raise_error(ArgumentError, "Must provide either a :data option or a block to copy_into")
   end
 
   specify "allows data columns to be specified" do
