@@ -146,12 +146,19 @@ describe "A vertica dataset" do
     expect(@d.where(~Sequel.ilike(:name, '%acme%')).sql).to eq(%{SELECT * FROM "test" WHERE ("name" NOT ILIKE '%acme%' ESCAPE '\\')})
   end
 
+  specify "supports case-insensitive regexps" do
+    @d << {:name => 'abc', :value => 1}
+    @d << {:name => 'bcd', :value => 2}
+
+    expect(@d.filter(:name => /BC/i).count).to eq(2)
+    expect(@d.filter(:name => /^BC/i).count).to eq(1)
+  end
+
   specify "#columns returns the correct column names" do
     expect(@d.columns!).to eq([:name, :value])
     expect(@d.select(:name).columns!).to eq([:name])
   end
 end
-
 
 describe "A Vertica dataset with a timestamp field" do
   before do
@@ -212,7 +219,6 @@ describe "A Vertica dataset with a timestamp field" do
   end
 end
 
-
 describe "A Vertica database" do
   before do
     @db = VERTICA_DB
@@ -252,6 +258,52 @@ describe "A Vertica database" do
   specify "#locks should be a dataset returning database locks " do
     expect(@db.locks).to be_a_kind_of(Sequel::Dataset)
     expect(@db.locks.all).to be_a_kind_of(Array)
+  end
+end
+
+describe "Vertica::Database#copy_into" do
+  before do
+    @db = VERTICA_DB
+    @db[:test].truncate
+  end
+
+  specify "takes data in an enumerable passed in with :data" do
+    strings = ["firstname|1"]
+    @db.copy_into(:test, data: strings)
+    expect(@db[:test].all.first.to_h).to eq({name: "firstname", value: 1})
+  end
+
+  specify "takes data from a block" do
+    strings = ["firstname|1"]
+    @db.copy_into(:test) {
+      strings.pop
+    }
+    expect(@db[:test].all.first.to_h).to eq({name: "firstname", value: 1})
+  end
+
+  specify "errors if both a block and :data are specified" do
+    expect { @db.copy_into(:test, data: ["a string"]) { "a block" } }.to \
+      raise_error(ArgumentError, "Cannot provide both a :data option and a block to copy_into")
+  end
+
+  specify "errors if neither block nor :data are specified" do
+    expect { @db.copy_into(:test) }.to \
+      raise_error(ArgumentError, "Must provide either a :data option or a block to copy_into")
+  end
+
+  specify "allows data columns to be specified" do
+    @db.copy_into(:test, columns: [:value, :name], data: ["1|firstname"])
+    expect(@db[:test].all.first.to_h).to eq({name: "firstname", value: 1})
+  end
+
+  specify "allows an options string to be appended" do
+    @db.copy_into(:test, data: ["lastname,2"], options: "DELIMITER ','")
+    expect(@db[:test].all.first.to_h).to eq({name: "lastname", value: 2})
+  end
+
+  specify "converts format: :csv to the correct SQL option" do
+    @db.copy_into(:test, data: ["lastname,2"], format: :csv)
+    expect(@db[:test].all.first.to_h).to eq({name: "lastname", value: 2})
   end
 end
 
