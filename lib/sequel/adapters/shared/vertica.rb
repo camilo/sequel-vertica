@@ -10,7 +10,7 @@ module Sequel
 
         if @primary_key[:auto_increment]
           @primary_key.delete(:auto_increment)
-          @primary_key[:type] = Vertica::Database::AUTO_INCREMENT
+          @primary_key[:type] = Vertica::DatabaseMethods::AUTO_INCREMENT
         end
 
         @primary_key
