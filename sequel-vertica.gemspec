@@ -12,10 +12,10 @@ Gem::Specification.new do |gem|
   gem.homepage      = "https://github.com/camilo/sequel-vertica"
   gem.license     = "MIT"
 
-  gem.requirements  = "Vertica version 6.0 or higher"
+  gem.requirements  = "Vertica version 8.1 or higher"
   gem.required_ruby_version = '>= 1.9.3'
 
-  gem.add_runtime_dependency "sequel", "~> 4.14"
+  gem.add_runtime_dependency "sequel", "~> 4.49"
   gem.add_runtime_dependency "vertica", "~> 1.0"
 
   gem.add_development_dependency "rake", ">= 10"

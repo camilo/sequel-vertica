@@ -89,7 +89,7 @@ describe "A vertica dataset" do
     'SELECT NOW() FROM "test"'
     )
 
-    expect(@d.select(:max.sql_function(:items__value)).sql).to eq( \
+    expect(@d.select(:max.sql_function(Sequel[:items][:value])).sql).to eq( \
       'SELECT max("items"."value") FROM "test"'
     )
 
@@ -343,20 +343,20 @@ describe "Vertica::Database schema qualified tables" do
   end
 
   specify "should be able to create, drop, select and insert into tables in a given schema" do
-    VERTICA_DB.create_table(:schema_test__table_in_schema_test){integer :i}
-    expect(VERTICA_DB[:schema_test__table_in_schema_test].first).to eq(nil)
-    expect(VERTICA_DB[:schema_test__table_in_schema_test].insert(:i=>1)).to eq(1)
-    expect(VERTICA_DB[:schema_test__table_in_schema_test].first).to eq({:i=>1})
+    VERTICA_DB.create_table(Sequel[:schema_test][:table_in_schema_test]){integer :i}
+    expect(VERTICA_DB[Sequel[:schema_test][:table_in_schema_test]].first).to eq(nil)
+    expect(VERTICA_DB[Sequel[:schema_test][:table_in_schema_test]].insert(:i=>1)).to eq(1)
+    expect(VERTICA_DB[Sequel[:schema_test][:table_in_schema_test]].first).to eq({:i=>1})
     expect(VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first).to eq({:i=>1})
-    VERTICA_DB.drop_table(:schema_test__table_in_schema_test)
+    VERTICA_DB.drop_table(Sequel[:schema_test][:table_in_schema_test])
     VERTICA_DB.create_table(:table_in_schema_test.qualify(:schema_test)){integer :i}
-    expect(VERTICA_DB[:schema_test__table_in_schema_test].first).to eq(nil)
+    expect(VERTICA_DB[Sequel[:schema_test][:table_in_schema_test]].first).to eq(nil)
     expect(VERTICA_DB.from(Sequel.lit('schema_test.table_in_schema_test')).first).to eq(nil)
     VERTICA_DB.drop_table(:table_in_schema_test.qualify(:schema_test))
   end
 
   specify "#tables should not include tables in a default non-public schema" do
-    VERTICA_DB.create_table(:schema_test__table_in_schema_test){integer :i}
+    VERTICA_DB.create_table(Sequel[:schema_test][:table_in_schema_test]){integer :i}
     expect(VERTICA_DB.tables).to include(:table_in_schema_test)
     expect(VERTICA_DB.tables).not_to include(:tables)
     expect(VERTICA_DB.tables).not_to include(:columns)
@@ -365,12 +365,12 @@ describe "Vertica::Database schema qualified tables" do
   end
 
   specify "#tables should return tables in the schema provided by the :schema argument" do
-    VERTICA_DB.create_table(:schema_test__table_in_schema_test){integer :i}
+    VERTICA_DB.create_table(Sequel[:schema_test][:table_in_schema_test]){integer :i}
     expect(VERTICA_DB.tables(:schema=>:schema_test)).to eq([:table_in_schema_test])
   end
 
   specify "#schema should not include columns from tables in a default non-public schema" do
-    VERTICA_DB.create_table(:schema_test__domains){integer :i}
+    VERTICA_DB.create_table(Sequel[:schema_test][:domains]){integer :i}
     sch = VERTICA_DB.schema(:domains)
     cs = sch.map{|x| x.first}
     expect(cs).to include(:i)
@@ -379,7 +379,7 @@ describe "Vertica::Database schema qualified tables" do
 
   specify "#schema should only include columns from the table in the given :schema argument" do
     VERTICA_DB.create_table!(:domains){integer :d}
-    VERTICA_DB.create_table(:schema_test__domains){integer :i}
+    VERTICA_DB.create_table(Sequel[:schema_test][:domains]){integer :i}
     sch = VERTICA_DB.schema(:domains, :schema=>:schema_test)
     cs = sch.map{|x| x.first}
     expect(cs).to include(:i)
@@ -388,8 +388,8 @@ describe "Vertica::Database schema qualified tables" do
   end
 
   specify "#table_exists? should see if the table is in a given schema" do
-    VERTICA_DB.create_table(:schema_test__schema_test){integer :i}
-    expect(VERTICA_DB.table_exists?(:schema_test__schema_test)).to eq(true)
+    VERTICA_DB.create_table(Sequel[:schema_test][:schema_test]){integer :i}
+    expect(VERTICA_DB.table_exists?(Sequel[:schema_test][:schema_test])).to eq(true)
   end
 
 end
