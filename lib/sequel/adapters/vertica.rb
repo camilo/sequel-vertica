@@ -157,22 +157,22 @@ module Sequel
       def schema_parse_table(table_name, options = {})
         schema = options[:schema]
 
-        selector = [:column_name, :constraint_name, :is_nullable.as(:allow_null),
-                    (:column_default).as(:default), (:data_type).as(:db_type)]
-        filter = { Sequel[:columns][:table_name] => table_name.to_s }
-        filter[Sequel[:columns][:table_schema]] = schema.to_s if schema
+        selector = [:COLUMN_NAME, :CONSTRAINT_NAME, :IS_NULLABLE.as(:ALLOW_NULL),
+                    (:COLUMN_DEFAULT).as(:DEFAULT), (:DATA_TYPE).as(:DB_TYPE)]
+        filter = { Sequel[:COLUMNS][:TABLE_NAME] => table_name.to_s }
+        filter[Sequel[:COLUMNS][:TABLE_SCHEMA]] = schema.to_s if schema
 
         dataset = metadata_dataset.
           select(*selector).
           filter(filter).
-          from(Sequel[:v_catalog][:columns]).
-          left_outer_join(Sequel[:v_catalog][:table_constraints], :table_id => :table_id)
+          from(Sequel[:V_CATALOG][:COLUMNS]).
+          left_outer_join(Sequel[:V_CATALOG][:TABLE_CONSTRAINTS], :table_id => :table_id)
 
         dataset.map do |row|
-          row[:default] = nil if blank_object?(row[:default])
-          row[:type] = schema_column_type(row[:db_type])
-          row[:primary_key] = row.delete(:constraint_name) == PK_NAME
-          [row.delete(:column_name).to_sym, row]
+          row[:DEFAULT] = nil if blank_object?(row[:DEFAULT])
+          row[:TYPE] = schema_column_type(row[:DB_TYPE])
+          row[:PRIMARY_KEY] = row.delete(:CONSTRAINT_NAME) == PK_NAME
+          [row.delete(:COLUMN_NAME).to_sym, row]
         end
       end
 
@@ -206,6 +206,7 @@ module Sequel
       SPACE = ' '.freeze
       PAREN_OPEN = '('.freeze
       PAREN_CLOSE = ')'.freeze
+      COMMA_SEPARATOR = ', '.freeze
       ESCAPE = ' ESCAPE '.freeze
       BACKSLASH = '\\'.freeze
 
@@ -254,11 +255,11 @@ module Sequel
         sql << REGEXP_LIKE
         sql << PAREN_OPEN
         literal_append(sql, source)
-        sql << COMMA
+        sql << COMMA_SEPARATOR
         literal_append(sql, pattern)
 
         if options
-          sql << COMMA
+          sql << COMMA_SEPARATOR
           literal_append(sql, options)
         end
 

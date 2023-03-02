@@ -15,11 +15,14 @@ Gem::Specification.new do |gem|
   gem.requirements  = "Vertica version 8.1 or higher"
   gem.required_ruby_version = '>= 1.9.3'
 
-  gem.add_runtime_dependency "sequel", "~> 4.49"
+  gem.add_runtime_dependency "sequel", "~> 5.66.0"
   gem.add_runtime_dependency "vertica", "~> 1.0"
 
   gem.add_development_dependency "rake", ">= 10"
   gem.add_development_dependency "rspec" , "~> 3.1"
+
+  gem.add_development_dependency "pry"
+  gem.add_development_dependency "pry-byebug"
 
   gem.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
   gem.files         = `git ls-files`.split("\n")
