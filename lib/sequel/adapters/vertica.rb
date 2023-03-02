@@ -41,7 +41,7 @@ module Sequel
       def execute(sql, opts = {}, &block)
         res = nil
         synchronize(opts[:server]) do |conn|
-          res = log_yield(sql) { conn.query(sql) }
+          res = log_connection_yield(sql, self, opts) { conn.query(sql) }
           res.each(&block)
         end
         res
@@ -131,7 +131,7 @@ module Sequel
       end
 
       def locks
-        dataset.from(:v_monitor__locks)
+        dataset.from(Sequel[:v_monitor][:locks])
       end
 
       def auto_increment_sql
@@ -148,7 +148,7 @@ module Sequel
         filter[:table_schema] = schema.to_s if schema
 
         dataset.select(:table_name).
-          from(:v_catalog__tables).
+          from(Sequel[:v_catalog][:tables]).
           filter(filter).
           to_a.
           map { |h| h[:table_name].to_sym }
@@ -157,22 +157,22 @@ module Sequel
       def schema_parse_table(table_name, options = {})
         schema = options[:schema]
 
-        selector = [:column_name, :constraint_name, :is_nullable.as(:allow_null),
-                    (:column_default).as(:default), (:data_type).as(:db_type)]
-        filter = { :columns__table_name => table_name.to_s }
-        filter[:columns__table_schema] = schema.to_s if schema
+        selector = [:COLUMN_NAME, :CONSTRAINT_NAME, :IS_NULLABLE.as(:ALLOW_NULL),
+                    (:COLUMN_DEFAULT).as(:DEFAULT), (:DATA_TYPE).as(:DB_TYPE)]
+        filter = { Sequel[:COLUMNS][:TABLE_NAME] => table_name.to_s }
+        filter[Sequel[:COLUMNS][:TABLE_SCHEMA]] = schema.to_s if schema
 
         dataset = metadata_dataset.
           select(*selector).
           filter(filter).
-          from(:v_catalog__columns).
-          left_outer_join(:v_catalog__table_constraints, :table_id => :table_id)
+          from(Sequel[:V_CATALOG][:COLUMNS]).
+          left_outer_join(Sequel[:V_CATALOG][:TABLE_CONSTRAINTS], :table_id => :table_id)
 
         dataset.map do |row|
-          row[:default] = nil if blank_object?(row[:default])
-          row[:type] = schema_column_type(row[:db_type])
-          row[:primary_key] = row.delete(:constraint_name) == PK_NAME
-          [row.delete(:column_name).to_sym, row]
+          row[:DEFAULT] = nil if blank_object?(row[:DEFAULT])
+          row[:TYPE] = schema_column_type(row[:DB_TYPE])
+          row[:PRIMARY_KEY] = row.delete(:CONSTRAINT_NAME) == PK_NAME
+          [row.delete(:COLUMN_NAME).to_sym, row]
         end
       end
 
@@ -188,6 +188,10 @@ module Sequel
         end
         sql
       end
+
+      def dataset_class_default
+        Dataset
+      end
     end
 
     class Dataset < Sequel::Dataset
@@ -199,11 +203,12 @@ module Sequel
       OVER = ' OVER '.freeze
       AS = ' AS '.freeze
       REGEXP_LIKE = 'REGEXP_LIKE'.freeze
-      SPACE = Dataset::SPACE
-      PAREN_OPEN = Dataset::PAREN_OPEN
-      PAREN_CLOSE = Dataset::PAREN_CLOSE
-      ESCAPE = Dataset::ESCAPE
-      BACKSLASH = Dataset::BACKSLASH
+      SPACE = ' '.freeze
+      PAREN_OPEN = '('.freeze
+      PAREN_CLOSE = ')'.freeze
+      COMMA_SEPARATOR = ', '.freeze
+      ESCAPE = ' ESCAPE '.freeze
+      BACKSLASH = '\\'.freeze
 
       Dataset.def_sql_method(self, :select, %w(with select distinct columns from join timeseries where group having compounds order limit lock))
 
@@ -226,16 +231,10 @@ module Sequel
         end
       end
 
-      def columns
-        return @columns if @columns
-        ds = unfiltered.unordered.clone(:distinct => nil, :limit => 0, :offset => nil)
-        res = @db.execute(ds.select_sql)
-        @columns = res.columns.map { |c| c.name.to_sym }
-        @columns
-      end
-
       def fetch_rows(sql)
-        execute(sql) do |row|
+        result_set = execute(sql)
+        self.columns = result_set.columns.map { |c| c.name.to_sym }
+        result_set.each do |row|
           yield row.to_h.inject({}) { |a, (k,v)| a[k.to_sym] = v; a }
         end
       end
@@ -256,11 +255,11 @@ module Sequel
         sql << REGEXP_LIKE
         sql << PAREN_OPEN
         literal_append(sql, source)
-        sql << COMMA
+        sql << COMMA_SEPARATOR
         literal_append(sql, pattern)
 
         if options
-          sql << COMMA
+          sql << COMMA_SEPARATOR
           literal_append(sql, options)
         end
 

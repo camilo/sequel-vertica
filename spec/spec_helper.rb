@@ -15,7 +15,7 @@ if ENV['SEQUEL_COLUMNS_INTROSPECTION']
 end
 
 
-Sequel.cache_anonymous_models = false
+Sequel::Model.cache_anonymous_models = false
 
 class Sequel::Database
   def log_duration(duration, message)
